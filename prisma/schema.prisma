@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String
+  password  String
+  createdAt DateTime @default(now())
+  roleId    Int
+  role      UserRole @relation(fields: [roleId], references: [id])
+
+  Voucher Voucher[]
+}
+
+model UserRole {
+  id           Int    @id @default(autoincrement())
+  userRoleName String
+
+  User User[]
+}
+
+model Package {
+  id           Int    @id @default(autoincrement())
+  packageName  String
+  packagePrice Int
+
+  PackageMenu PackageMenu[]
+  Voucher     Voucher[]
+}
+
+model Menu {
+  id              Int    @id @default(autoincrement())
+  menuName        String
+  menuPhoto       String
+  menuDescription String @db.VarChar(400)
+
+  PackageMenu PackageMenu[]
+  VoucherMenu VoucherMenu[]
+}
+
+model PackageMenu {
+  id        Int      @id @default(autoincrement())
+  package   Package  @relation(fields: [packageId], references: [id])
+  packageId Int
+  menu      Menu     @relation(fields: [menuId], references: [id])
+  menuId    Int
+  createdAt DateTime @default(now())
+}
+
+model Table {
+  id      Int    @id @default(autoincrement())
+  tableNo String
+
+  Voucher Voucher[]
+}
+
+model Voucher {
+  id          Int      @id @default(autoincrement())
+  isActive    Boolean
+  personCount Int
+  token       String
+  totalBills  Decimal
+  issueDate   DateTime @default(now())
+
+  table   Table @relation(fields: [tableId], references: [id])
+  tableId Int
+
+  package   Package @relation(fields: [packageId], references: [id])
+  packageId Int
+
+  user      User @relation(fields: [createdBy], references: [id])
+  createdBy Int
+
+  VoucherMenu VoucherMenu[]
+}
+
+model VoucherMenu {
+  id Int @id @default(autoincrement())
+
+  voucher   Voucher @relation(fields: [voucherId], references: [id])
+  voucherId Int
+
+  menu   Menu @relation(fields: [menuId], references: [id])
+  menuId Int
+}
