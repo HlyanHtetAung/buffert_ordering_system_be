@@ -60,15 +60,17 @@ model PackageMenu {
 }
 
 model Table {
-  id      Int    @id @default(autoincrement())
-  tableNo String
+  id        Int     @id @default(autoincrement())
+  tableNo   Int     @unique
+  tableName String?
+  isActive  Boolean @default(false)
 
   Voucher Voucher[]
 }
 
 model Voucher {
   id          Int      @id @default(autoincrement())
-  isActive    Boolean
+  isActive    Boolean  @default(true)
   personCount Int
   token       String
   totalBills  Decimal
@@ -87,7 +89,8 @@ model Voucher {
 }
 
 model VoucherMenu {
-  id Int @id @default(autoincrement())
+  id     Int     @id @default(autoincrement())
+  isDone Boolean @default(false)
 
   voucher   Voucher @relation(fields: [voucherId], references: [id])
   voucherId Int

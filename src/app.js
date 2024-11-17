@@ -14,6 +14,8 @@ const userRoutes = require("./routes/usersRoute");
 const authRoutes = require("./routes/authRoute");
 const menusRoutes = require("./routes/menusRoute");
 const packageRoutes = require("./routes/packageRoute");
+const tableRoutes = require("./routes/tableRoute");
+const voucherRoutes = require("./routes/voucherRoute");
 
 // middleware to detect token is still valid or not
 const verifyToken = (req, res, next) => {
@@ -37,12 +39,14 @@ const verifyToken = (req, res, next) => {
 app.use("/", authRoutes);
 
 // *** Protected route ***
-app.use(verifyToken);
+// app.use(verifyToken);
 
 // *** admin routes ***
 app.use("/users", userRoutes); // All user-related routes
 app.use("/menus", menusRoutes); // All menu-related routes
 app.use("/package", packageRoutes); // All package-related routes
+app.use("/table", tableRoutes); // All table related routes
+app.use("/voucher", voucherRoutes); // All voucher related routes
 
 // ** this is for to create folder to upload files
 FOLDER_LIST_TO_UPLOAD_FILES.forEach((folderName) => createFolders(folderName));

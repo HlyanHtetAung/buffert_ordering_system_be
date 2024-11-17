@@ -5,6 +5,7 @@ const path = require("path");
 const fs = require("fs");
 
 const multer = require("multer");
+const { deleteImage } = require("../utils");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -35,12 +36,82 @@ router.post("/", upload.single("menuPhoto"), async (req, res) => {
     });
     res.status(201).json({
       message: "Menu created successfully!",
-      menu: newMenu,
+      data: newMenu,
     });
   } catch (error) {
     res
       .status(500)
       .json({ error: "Error creating menu", details: error.message });
+  }
+});
+
+// *** edit menu ***
+router.patch("/edit", upload.single("menuPhoto"), async (req, res) => {
+  try {
+    const id = parseInt(req.query.id);
+    const { menuName, menuDescription } = req.body;
+    const menuPhoto = req.file ? req.file.filename : undefined;
+
+    // Find the current menu data in the database
+    const existingMenu = await prisma.menu.findUnique({
+      where: { id: parseInt(id, 10) },
+    });
+
+    if (!existingMenu) {
+      return res.status(404).json({ error: "Menu not found" });
+    }
+
+    // delete the photo if menuPhoto is provided
+    if (menuPhoto && existingMenu.menuPhoto) {
+      deleteImage("menus", existingMenu.menuPhoto);
+    }
+
+    // ** to update data dynamically **
+    const updateData = {
+      ...(menuName && { menuName }),
+      ...(menuDescription && { menuDescription }),
+      ...(menuPhoto && { menuPhoto }),
+    };
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: "No fields provided for update" });
+    }
+
+    const updatedMenu = await prisma.menu.update({
+      where: { id },
+      data: updateData,
+    });
+
+    res.status(200).json({
+      message: "Menu updated successfully!",
+      data: updatedMenu,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error updating menu", details: error.message });
+  }
+});
+
+// *** get menu detail with id ***
+router.get("/detail", async (req, res) => {
+  const id = parseInt(req.query.id);
+
+  try {
+    const menu = await prisma.menu.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    res.status(201).json({
+      message: "Menu detail fetched successfully!",
+      data: menu,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error fetching menu", details: error.message });
   }
 });
 

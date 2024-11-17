@@ -14,7 +14,7 @@ router.post("/", async (req, res) => {
     });
     res.status(201).json({
       message: "Package created successfully!",
-      menu: newPackage,
+      data: newPackage,
     });
   } catch (error) {
     res
@@ -58,7 +58,8 @@ router.get("/detail", async (req, res) => {
       },
       include: {
         PackageMenu: {
-          include: {
+          select: {
+            id: true,
             menu: true,
           },
         },
@@ -72,6 +73,7 @@ router.get("/detail", async (req, res) => {
         packagePrice: packageWithMenus.packagePrice,
       },
       menus: packageWithMenus.PackageMenu.map((pkgMenu) => ({
+        pkMenuId: pkgMenu.id,
         id: pkgMenu.menu.id,
         menuName: pkgMenu.menu.menuName,
         menuPhoto: pkgMenu.menu.menuPhoto,
@@ -102,6 +104,35 @@ router.get("/", async (req, res) => {
     res
       .status(500)
       .json({ error: "Error fetching packages", details: error.message });
+  }
+});
+
+// *** remove menu from pacakge ***
+router.delete("/removeMenu/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const deletedPackageMenu = await prisma.packageMenu.delete({
+      where: {
+        id: parseInt(id, 10),
+      },
+    });
+
+    res.status(200).json({
+      message: "PackageMenu deleted successfully!",
+      packageMenu: deletedPackageMenu,
+    });
+  } catch (error) {
+    if (error.code === "P2025") {
+      // Handle case where record does not exist
+      res.status(404).json({ error: "PackageMenu not found" });
+    } else {
+      // Handle other errors
+      res.status(500).json({
+        error: "An error occurred while deleting the PackageMenu",
+        details: error.message,
+      });
+    }
   }
 });
 
