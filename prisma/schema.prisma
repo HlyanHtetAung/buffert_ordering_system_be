@@ -72,7 +72,7 @@ model Voucher {
   id          Int      @id @default(autoincrement())
   isActive    Boolean  @default(true)
   personCount Int
-  token       String
+  token       String   @unique
   totalBills  Decimal
   issueDate   DateTime @default(now())
 

@@ -28,7 +28,7 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, "accessTokenPrivateKey");
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET_KEY);
     req.user = decoded;
     next();
   } catch (error) {
