@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const prisma = require("../prisma/client");
-
 var jwt = require("jsonwebtoken");
 
 const generateAccessToken = (user) => {

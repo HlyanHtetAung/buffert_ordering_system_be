@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+var jwt = require("jsonwebtoken");
 
 function generateVoucherToken() {
   return crypto.randomBytes(32).toString("hex"); // Generates a 64-character token
@@ -34,4 +35,28 @@ function deleteImage(folderName, fileName) {
   }
 }
 
-module.exports = { createFolders, deleteImage, generateVoucherToken };
+// middleware to detect token is still valid or not
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) {
+    return res
+      .status(401)
+      .json({ message: "Access denied. No token provided." });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET_KEY);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({ message: "Invalid or expired token." });
+  }
+};
+
+module.exports = {
+  createFolders,
+  deleteImage,
+  generateVoucherToken,
+  verifyToken,
+};

@@ -12,7 +12,7 @@ router.post("/", async (req, res) => {
         packagePrice,
       },
     });
-    res.status(201).json({
+    res.status(200).json({
       message: "Package created successfully!",
       data: newPackage,
     });
@@ -39,8 +39,8 @@ router.post("/createPackageMenu", async (req, res) => {
       });
     });
     res
-      .status(201)
-      .json({ message: "Transaction succeeded!", packageMenu: newPackage });
+      .status(200)
+      .json({ message: "Transaction succeeded!", data: newPackage });
   } catch (error) {
     console.error("Transaction failed, rolling back changes:", error);
     res.status(500).json({ message: "Transaction failed, rolled back." });
@@ -81,7 +81,7 @@ router.get("/detail", async (req, res) => {
       })),
     };
 
-    res.status(201).json({
+    res.status(200).json({
       message: "Package detail fetched successfully!",
       data: formattedResponse,
     });
@@ -96,7 +96,7 @@ router.get("/detail", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const allPackages = await prisma.package.findMany();
-    res.status(201).json({
+    res.status(200).json({
       message: "All Packages fetched successfully!",
       data: allPackages,
     });
@@ -120,7 +120,7 @@ router.delete("/removeMenu/:id", async (req, res) => {
 
     res.status(200).json({
       message: "PackageMenu deleted successfully!",
-      packageMenu: deletedPackageMenu,
+      data: deletedPackageMenu,
     });
   } catch (error) {
     if (error.code === "P2025") {

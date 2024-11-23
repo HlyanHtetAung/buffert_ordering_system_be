@@ -16,7 +16,10 @@ router.post("/", async (req, res) => {
       },
     });
 
-    res.status(201).json(newUser); // Send back the created user
+    res.status(200).json({
+      message: "User created successfully!",
+      data: newUser,
+    }); // Send back the created user
   } catch (error) {
     console.log(error.message);
   }
