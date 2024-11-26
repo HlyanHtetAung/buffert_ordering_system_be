@@ -89,8 +89,9 @@ model Voucher {
 }
 
 model VoucherMenu {
-  id     Int     @id @default(autoincrement())
-  isDone Boolean @default(false)
+  id       Int     @id @default(autoincrement())
+  isDone   Boolean @default(false)
+  quantity Int
 
   voucher   Voucher @relation(fields: [voucherId], references: [id])
   voucherId Int

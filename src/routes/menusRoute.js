@@ -303,10 +303,7 @@ const clientRoutes = () => {
   // ** order accessible menus by client **
   router.post("/client/orderMenu/:token", async (req, res) => {
     const { token } = req.params;
-    const { menuIds } = req.body;
-    console.log("** menu ids **", menuIds);
-    console.log("Token", token);
-
+    const { menus } = req.body;
     try {
       // ** search voucher by token and check is it still active or not **
       const voucher = await prisma.voucher.findUnique({
@@ -325,11 +322,12 @@ const clientRoutes = () => {
 
       // Create orders for each menuId
       const createdOrders = await Promise.all(
-        menuIds.map((menuId) =>
+        menus.map((menu) =>
           prisma.voucherMenu.create({
             data: {
               voucherId: parseInt(voucher.id, 10),
-              menuId: parseInt(menuId, 10),
+              menuId: parseInt(menu.menuId, 10),
+              quantity: menu.quantity
             },
           })
         )
