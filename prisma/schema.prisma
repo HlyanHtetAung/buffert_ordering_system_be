@@ -41,13 +41,22 @@ model Package {
 }
 
 model Menu {
-  id              Int    @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   menuName        String
   menuPhoto       String
-  menuDescription String @db.VarChar(400)
+  menuDescription String   @db.VarChar(400)
+  categoryId      Int
+  category        Category @relation(fields: [categoryId], references: [id])
 
   PackageMenu PackageMenu[]
   VoucherMenu VoucherMenu[]
+}
+
+model Category {
+  id           Int    @id @default(autoincrement())
+  categoryName String @db.VarChar(400)
+
+  Menu Menu[]
 }
 
 model PackageMenu {
