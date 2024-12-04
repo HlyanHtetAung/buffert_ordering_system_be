@@ -45,6 +45,7 @@ model Menu {
   menuName        String
   menuPhoto       String
   menuDescription String   @db.VarChar(400)
+  menuPrice       Int
   categoryId      Int
   category        Category @relation(fields: [categoryId], references: [id])
 
@@ -82,7 +83,7 @@ model Voucher {
   isActive    Boolean  @default(true)
   personCount Int
   token       String   @unique
-  totalBills  Decimal
+  totalBills  Decimal  @default(0)
   issueDate   DateTime @default(now())
 
   table   Table @relation(fields: [tableId], references: [id])

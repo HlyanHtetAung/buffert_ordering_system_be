@@ -14,6 +14,8 @@ const menusRoutes = require("./routes/menusRoute");
 const packageRoutes = require("./routes/packageRoute");
 const tableRoutes = require("./routes/tableRoute");
 const voucherRoutes = require("./routes/voucherRoute");
+const categoryRoutes = require("./routes/categoryRoute");
+
 const socketConnections = require("./socketIo");
 
 // app.use(cors());
@@ -37,6 +39,7 @@ app.use("/menus", menusRoutes(io)); // All menu-related routes
 app.use("/package", packageRoutes); // All package-related routes
 app.use("/table", tableRoutes(io)); // All table related routes
 app.use("/voucher", voucherRoutes(io)); // All voucher related routes
+app.use("/category", categoryRoutes); // All voucher related routes
 
 // ** this is for to create folder to upload files
 FOLDER_LIST_TO_UPLOAD_FILES.forEach((folderName) => createFolders(folderName));

@@ -31,7 +31,7 @@ const adminRoutes = () => {
   // *** create a new menu ***
   router.post("/", upload.single("menuPhoto"), async (req, res) => {
     try {
-      const { menuName, menuDescription, categoryId } = req.body;
+      const { menuName, menuDescription, categoryId, menuPrice } = req.body;
       const menuPhoto = req.file ? req.file.filename : null;
       // Insert menu data into the database
       const newMenu = await prisma.menu.create({
@@ -39,6 +39,7 @@ const adminRoutes = () => {
           menuName,
           menuPhoto,
           menuDescription,
+          menuPrice: parseInt(menuPrice),
           categoryId: parseInt(categoryId),
         },
       });
@@ -186,8 +187,12 @@ const adminRoutes = () => {
 
   // *** get all menus ***
   router.get("/", async (req, res) => {
+    const { categoryId } = req.query;
+
     try {
-      const allMenus = await prisma.menu.findMany();
+      const allMenus = await prisma.menu.findMany({
+        where: categoryId ? { categoryId: parseInt(categoryId) } : {},
+      });
       res.status(200).json({
         message: "All Menus fetched successfully!",
         data: allMenus,
@@ -239,47 +244,10 @@ const adminRoutes = () => {
         .json({ error: "Error deleting menu", details: error.message });
     }
   });
-
-  // *** get menus by categoryId ***
-  router.get("/:categoryId", async (req, res) => {
-    const { categoryId } = req.params;
-    try {
-      const menus = await prisma.menu.findMany({
-        where: {
-          categoryId: parseInt(categoryId),
-        },
-      });
-
-      res.status(200).json({
-        message: "All Menus fetched successfully!",
-        data: menus,
-      });
-    } catch (error) {
-      res
-        .status(500)
-        .json({ error: "Error fetching menus", details: error.message });
-    }
-  });
-
-  // *** get all menu categories ***
-  router.get("/categories/all", async (req, res) => {
-    console.log("*** called ***");
-    try {
-      const allCategories = await prisma.category.findMany();
-      res.status(200).json({
-        message: "All Category fetched successfully!",
-        data: allCategories,
-      });
-    } catch (error) {
-      res
-        .status(500)
-        .json({ error: "Error fetching categories", details: error.message });
-    }
-  });
 };
 
 const clientRoutes = () => {
-  // ** get accessible menus by client **
+  // ** get all accessible menus by client **
   router.get("/client/:token", async (req, res) => {
     const { token } = req.params;
     try {
@@ -337,6 +305,67 @@ const clientRoutes = () => {
         .status(500)
         .json({ error: "Error fetching package", details: error.message });
     }
+  });
+
+  // ** get accessible menus by client with categoryId **
+  router.get("/client/:token/:categoryId", async (req, res) => {
+    const { token, categoryId } = req.params;
+    console.log("token and categoryId", token, categoryId);
+    // try {
+    //   // ** search voucher by token and check is it still active or not **
+    //   const voucher = await prisma.voucher.findUnique({
+    //     where: {
+    //       token,
+    //     },
+    //   });
+    //   if (!voucher) {
+    //     return res.status(404).json({ error: "Voucher is not found" });
+    //   }
+    //   if (voucher.isActive == false) {
+    //     return res
+    //       .status(404)
+    //       .json({ error: "Voucher is not accessible anymore!" });
+    //   }
+
+    //   const packageId = voucher.packageId;
+    //   const packageWithMenus = await prisma.package.findUnique({
+    //     where: {
+    //       id: packageId,
+    //     },
+    //     include: {
+    //       PackageMenu: {
+    //         select: {
+    //           id: true,
+    //           menu: true,
+    //         },
+    //       },
+    //     },
+    //   });
+
+    //   const formattedResponse = {
+    //     package: {
+    //       id: packageWithMenus.id,
+    //       packageName: packageWithMenus.packageName,
+    //       packagePrice: packageWithMenus.packagePrice,
+    //     },
+    //     menus: packageWithMenus.PackageMenu.map((pkgMenu) => ({
+    //       pkMenuId: pkgMenu.id,
+    //       id: pkgMenu.menu.id,
+    //       menuName: pkgMenu.menu.menuName,
+    //       menuPhoto: pkgMenu.menu.menuPhoto,
+    //       menuDescription: pkgMenu.menu.menuDescription,
+    //     })),
+    //   };
+
+    //   res.status(200).json({
+    //     message: "Package detail fetched successfully!",
+    //     data: formattedResponse,
+    //   });
+    // } catch (error) {
+    //   res
+    //     .status(500)
+    //     .json({ error: "Error fetching package", details: error.message });
+    // }
   });
 
   // ** order accessible menus by client **
