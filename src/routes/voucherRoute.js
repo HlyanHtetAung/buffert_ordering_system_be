@@ -8,54 +8,62 @@ const adminRoutes = (io) => {
   router.post("/", async (req, res) => {
     const { personCount, tableId, packageId, createdBy } = req.body;
 
-    const token = generateVoucherToken();
-
-    //  ** to check table is available atm or not **
-    const table = await prisma.table.findUnique({
-      where: {
-        id: tableId,
-      },
-    });
-    const isActiveTable = table.isActive;
-    if (isActiveTable == true) {
-      return res.status(409).json({
-        error: "Table is not free",
-        message: "The requested table is currently occupied.",
-      });
-    }
-
-    // ** get package price **
-    const package = await prisma.package.findUnique({
-      where: {
-        id: packageId,
-      },
-    });
-    const pacakgePrice = package.packagePrice;
-    const totalBills = pacakgePrice * personCount;
     try {
-      const newVoucher = await prisma.voucher.create({
-        data: {
-          personCount,
-          tableId,
-          packageId,
-          createdBy,
-          token,
-          totalBills,
-        },
-      });
-      // ** updating table isActive Status **
-      await prisma.table.update({
-        where: {
-          id: tableId,
-        },
-        data: {
-          isActive: true,
-        },
-      });
+      await prisma.$transaction(async (prisma) => {
+        const token = generateVoucherToken();
+        //  ** to check table is available atm or not **
+        const table = await prisma.table.findUnique({
+          where: {
+            id: tableId,
+          },
+        });
+        const isActiveTable = table.isActive;
+        if (isActiveTable == true) {
+          return res.status(409).json({
+            error: "Table is not free",
+            message: "The requested table is currently occupied.",
+          });
+        }
 
-      res.status(200).json({
-        message: "Voucher created successfully!",
-        data: newVoucher,
+        // ** get package price **
+        const package = await prisma.package.findUnique({
+          where: {
+            id: packageId,
+          },
+        });
+        const pacakgePrice = package.packagePrice;
+        const totalBills = pacakgePrice * personCount;
+        const newVoucher = await prisma.voucher.create({
+          data: {
+            personCount,
+            packageId,
+            createdBy,
+            token,
+            totalBills,
+          },
+        });
+        // ** updating table isActive Status **
+        await prisma.table.update({
+          where: {
+            id: tableId,
+          },
+          data: {
+            isActive: true,
+          },
+        });
+
+        // *** creating records in junction table
+        await prisma.tableVoucher.create({
+          data: {
+            tableId: tableId,
+            voucherId: newVoucher.id,
+          },
+        });
+
+        res.status(200).json({
+          message: "Voucher created successfully!",
+          data: newVoucher,
+        });
       });
     } catch (error) {
       res
@@ -67,29 +75,54 @@ const adminRoutes = (io) => {
   // *** end voucher process ***
   router.patch("/endVoucher/:id", async (req, res) => {
     const { id } = req.params;
-    console.log("id", id);
+    const voucherId = parseInt(id);
+
     try {
-      // ** changing voucher isActive status to false **
-      const updatedVoucher = await prisma.voucher.update({
-        where: {
-          id: parseInt(id, 10),
-        },
-        data: {
-          isActive: false,
-        },
-      });
+      await prisma.$transaction(async (prisma) => {
+        const updatedVoucher = await prisma.voucher.update({
+          where: {
+            id: voucherId,
+          },
+          data: {
+            isActive: false,
+          },
+        });
 
-      //  ** changing table active state to false when the voucher is finshed **
-      await prisma.table.update({
-        where: { id: updatedVoucher.tableId },
-        data: {
-          isActive: false,
-        },
-      });
+        // Update isActive to false in TableVoucher
+        await prisma.tableVoucher.updateMany({
+          where: {
+            voucherId: voucherId,
+          },
+          data: {
+            isActive: false,
+          },
+        });
 
-      res.status(200).json({
-        message: "Voucher is finished",
-        data: updatedVoucher,
+        // Update isActive to false in Table
+        // First, fetch the `tableId` associated with the TableVoucher
+        const tableVoucher = await prisma.tableVoucher.findFirst({
+          where: {
+            voucherId: voucherId,
+          },
+          select: {
+            tableId: true,
+          },
+        });
+
+        if (tableVoucher?.tableId) {
+          await prisma.table.update({
+            where: {
+              id: tableVoucher.tableId,
+            },
+            data: {
+              isActive: false,
+            },
+          });
+        }
+        res.status(200).json({
+          message: "Voucher created successfully!",
+          data: updatedVoucher,
+        });
       });
     } catch (error) {
       res

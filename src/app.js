@@ -18,7 +18,7 @@ const categoryRoutes = require("./routes/categoryRoute");
 
 const socketConnections = require("./socketIo");
 
-// app.use(cors());
+app.use(cors());
 app.use(express.json()); // Middleware to parse JSON request bodies
 
 const server = http.createServer(app);

@@ -67,27 +67,23 @@ const adminRoutes = () => {
         include: {
           voucher: {
             include: {
-              table: true, // Include table details for grouping
+              TableVoucher: {
+                where: {
+                  isActive: true, // Include only active TableVoucher
+                },
+                select: {
+                  tableId: true, // Select only the tableId
+                },
+              },
             },
           },
           menu: true, // Include menu details
         },
-        orderBy: [
-          {
-            voucher: {
-              tableId: "asc", // Order by table ID
-            },
-          },
-          {
-            id: "asc", // Order by VoucherMenu ID within the table group
-          },
-        ],
       });
 
       const groupedList = Object.values(
         groupedMenus.reduce((acc, item) => {
-          const tableId = item.voucher.table.id;
-
+          const tableId = item.voucher.TableVoucher[0].tableId;
           // If the table ID doesn't exist in the accumulator, initialize it
           if (!acc[tableId]) {
             acc[tableId] = {
@@ -248,62 +244,117 @@ const adminRoutes = () => {
 
 const clientRoutes = () => {
   // ** get all accessible menus by client **
-  router.get("/client/:token", async (req, res) => {
-    const { token } = req.params;
+  router.get("/client/:tableId", async (req, res) => {
+    const { tableId } = req.params;
     try {
-      // ** search voucher by token and check is it still active or not **
-      const voucher = await prisma.voucher.findUnique({
-        where: {
-          token,
-        },
-      });
-      if (!voucher) {
-        return res.status(404).json({ error: "Voucher is not found" });
-      }
-      if (voucher.isActive == false) {
-        return res
-          .status(404)
-          .json({ error: "Voucher is not accessible anymore!" });
+      if (!tableId) {
+        return res.status(400).json({ error: "tableId is required" });
       }
 
-      const packageId = voucher.packageId;
-      const packageWithMenus = await prisma.package.findUnique({
-        where: {
-          id: packageId,
-        },
-        include: {
-          PackageMenu: {
-            select: {
-              id: true,
-              menu: true,
+      try {
+        const tableVoucher = await prisma.tableVoucher.findFirst({
+          where: {
+            tableId: parseInt(tableId),
+            isActive: true,
+          },
+        });
+
+        if (!tableVoucher) {
+          return res.status(404).json({
+            error: "No active TableVoucher found for the given tableId",
+          });
+        }
+
+        // ** search voucher by token and check is it still active or not **
+        const voucher = await prisma.voucher.findUnique({
+          where: {
+            id: tableVoucher.voucherId,
+          },
+        });
+
+        if (!voucher) {
+          return res.status(404).json({ error: "Voucher is not found" });
+        }
+        if (voucher.isActive == false) {
+          return res
+            .status(404)
+            .json({ error: "Voucher is not accessible anymore!" });
+        }
+
+        const packageId = voucher.packageId;
+
+        // Fetch the package with menus included
+        const packageWithMenus = await prisma.package.findUnique({
+          where: {
+            id: packageId,
+          },
+          include: {
+            PackageMenu: {
+              select: {
+                id: true,
+                menuId: true,
+                packageId: true,
+                menu: {
+                  select: {
+                    id: true,
+                    menuName: true,
+                    menuPhoto: true,
+                    menuDescription: true,
+                    menuPrice: true,
+                  },
+                },
+              },
             },
           },
-        },
-      });
+        });
 
-      const formattedResponse = {
-        package: {
-          id: packageWithMenus.id,
-          packageName: packageWithMenus.packageName,
-          packagePrice: packageWithMenus.packagePrice,
-        },
-        menus: packageWithMenus.PackageMenu.map((pkgMenu) => ({
-          pkMenuId: pkgMenu.id,
-          id: pkgMenu.menu.id,
-          menuName: pkgMenu.menu.menuName,
-          menuPhoto: pkgMenu.menu.menuPhoto,
-          menuDescription: pkgMenu.menu.menuDescription,
-        })),
-      };
+        // Fetch all menus
+        const allMenus = await prisma.menu.findMany({
+          select: {
+            id: true,
+            menuName: true,
+            menuPhoto: true,
+            menuDescription: true,
+            menuPrice: true,
+          },
+        });
 
-      res.status(200).json({
-        message: "Package detail fetched successfully!",
-        data: formattedResponse,
-      });
+        // Map menus with package inclusion check
+        const formattedResponse = {
+          package: {
+            id: packageWithMenus.id,
+            packageName: packageWithMenus.packageName,
+            packagePrice: packageWithMenus.packagePrice,
+          },
+          menus: allMenus.map((menu) => {
+            // Check if the menu is part of the package
+            const pkgMenu = packageWithMenus.PackageMenu.find(
+              (pkgMenu) => pkgMenu.menuId === menu.id
+            );
+
+            return {
+              id: menu.id,
+              menuName: menu.menuName,
+              menuPhoto: menu.menuPhoto,
+              menuDescription: menu.menuDescription,
+              menuPrice: pkgMenu ? 0 : menu.menuPrice,
+              // if the menu is included in package return price 0 otherwise return actual menu price
+            };
+          }),
+        };
+
+        res.status(200).json({
+          message: "Package detail fetched successfully!",
+          data: { formattedResponse },
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     } catch (error) {
       res
         .status(500)
-        .json({ error: "Error fetching package", details: error.message });
+        .json({ error: "Error creating order", details: error.message });
     }
   });
 
@@ -369,16 +420,33 @@ const clientRoutes = () => {
   });
 
   // ** order accessible menus by client **
-  router.post("/client/orderMenu/:token", async (req, res) => {
-    const { token } = req.params;
-    const { menus } = req.body;
+  router.post("/client/orderMenu", async (req, res) => {
+    const { menus, tableId } = req.body;
+
     try {
+      if (!tableId) {
+        return res.status(400).json({ error: "tableId is required" });
+      }
+      const tableVoucher = await prisma.tableVoucher.findFirst({
+        where: {
+          tableId: parseInt(tableId),
+          isActive: true,
+        },
+      });
+      if (!tableVoucher) {
+        return res.status(404).json({
+          error: "No active TableVoucher found for the given tableId",
+        });
+      }
+      const voucherId = tableVoucher.voucherId;
+
       // ** search voucher by token and check is it still active or not **
       const voucher = await prisma.voucher.findUnique({
         where: {
-          token,
+          id: voucherId,
         },
       });
+
       if (!voucher) {
         return res.status(404).json({ error: "Voucher is not found" });
       }
@@ -388,18 +456,38 @@ const clientRoutes = () => {
           .json({ error: "Voucher is not accessible anymore!" });
       }
 
-      // Create orders for each menuId
+      const totalPrice = menus.reduce(
+        (total, menu) => total + menu.quantity * menu.price,
+        0
+      );
+
+      const totalBills = parseInt(voucher.totalBills) + totalPrice;
+
+      // *** updating total bills according to the order menus ***
+      await prisma.voucher.update({
+        where: {
+          id: voucherId,
+        },
+        data: {
+          totalBills: totalBills,
+          // Add more fields as needed
+        },
+      });
+
+      // *** Create orders for each menuId ***
       const createdOrders = await Promise.all(
         menus.map((menu) =>
           prisma.voucherMenu.create({
             data: {
-              voucherId: parseInt(voucher.id, 10),
-              menuId: parseInt(menu.menuId, 10),
+              voucherId: parseInt(voucher.id),
+              menuId: menu.menuId,
               quantity: menu.quantity,
+              menuPrice: menu.menuPrice,
             },
           })
         )
       );
+
       res.status(200).json({
         message: "Orders created successfully!",
         data: createdOrders,
