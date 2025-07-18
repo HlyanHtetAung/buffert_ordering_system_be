@@ -5,39 +5,23 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 const { deleteImage } = require("../utils");
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(
-      null,
-      "/Users/hlyanhtet/Desktop/personal_projects/hotpot_buffet_prisma/src/images/menus"
-    );
-  },
-  filename: function (req, file, cb) {
-    // Generate a unique filename using a timestamp and the original file extension
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const extension = path.extname(file.originalname); // Get the file extension
-    const baseName = path.basename(file.originalname, extension); // Remove the extension
-
-    // Create a unique filename
-    const uniqueFileName = `${baseName}-${uniqueSuffix}${extension}`;
-    cb(null, uniqueFileName);
-  },
-});
-
-const upload = multer({ storage });
+const { uploadImageToS3, getImageFromS3 } = require("../s3");
+const upload = multer({ dest: "uploads/" });
 
 const adminRoutes = () => {
   // *** create a new menu ***
   router.post("/", upload.single("menuPhoto"), async (req, res) => {
+    const file = req.file;
     try {
       const { menuName, menuDescription, categoryId, menuPrice } = req.body;
-      const menuPhoto = req.file ? req.file.filename : null;
+      const result = await uploadImageToS3(file);
+      const awsImageResponse = await getImageFromS3(result.key);
+
       // Insert menu data into the database
       const newMenu = await prisma.menu.create({
         data: {
           menuName,
-          menuPhoto,
+          menuPhoto: awsImageResponse,
           menuDescription,
           menuPrice: parseInt(menuPrice),
           categoryId: parseInt(categoryId),

@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "Menu" ADD COLUMN     "menuPrice" INTEGER NOT NULL DEFAULT 0;

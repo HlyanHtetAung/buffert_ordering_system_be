@@ -1,26 +1,21 @@
-/*
-  Warnings:
+-- CreateTable
+CREATE TABLE "User" (
+    "id" SERIAL NOT NULL,
+    "username" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "roleId" INTEGER NOT NULL,
 
-  - The primary key for the `User` table will be changed. If it partially fails, the table could be left without primary key constraint.
-  - You are about to drop the column `userId` on the `User` table. All the data in the column will be lost.
-  - The primary key for the `UserRole` table will be changed. If it partially fails, the table could be left without primary key constraint.
-  - You are about to drop the column `userRoleId` on the `UserRole` table. All the data in the column will be lost.
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
 
-*/
--- DropForeignKey
-ALTER TABLE "User" DROP CONSTRAINT "User_roleId_fkey";
+-- CreateTable
+CREATE TABLE "UserRole" (
+    "id" SERIAL NOT NULL,
+    "userRoleName" TEXT NOT NULL,
 
--- AlterTable
-ALTER TABLE "User" DROP CONSTRAINT "User_pkey",
-DROP COLUMN "userId",
-ADD COLUMN     "id" SERIAL NOT NULL,
-ADD CONSTRAINT "User_pkey" PRIMARY KEY ("id");
-
--- AlterTable
-ALTER TABLE "UserRole" DROP CONSTRAINT "UserRole_pkey",
-DROP COLUMN "userRoleId",
-ADD COLUMN     "id" SERIAL NOT NULL,
-ADD CONSTRAINT "UserRole_pkey" PRIMARY KEY ("id");
+    CONSTRAINT "UserRole_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "Package" (
@@ -37,8 +32,18 @@ CREATE TABLE "Menu" (
     "menuName" TEXT NOT NULL,
     "menuPhoto" TEXT NOT NULL,
     "menuDescription" VARCHAR(400) NOT NULL,
+    "menuPrice" INTEGER NOT NULL,
+    "categoryId" INTEGER NOT NULL,
 
     CONSTRAINT "Menu_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Category" (
+    "id" SERIAL NOT NULL,
+    "categoryName" VARCHAR(400) NOT NULL,
+
+    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -54,20 +59,31 @@ CREATE TABLE "PackageMenu" (
 -- CreateTable
 CREATE TABLE "Table" (
     "id" SERIAL NOT NULL,
-    "tableNo" TEXT NOT NULL,
+    "tableNo" INTEGER NOT NULL,
+    "tableName" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Table_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
+CREATE TABLE "TableVoucher" (
+    "id" SERIAL NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "tableId" INTEGER,
+    "voucherId" INTEGER,
+
+    CONSTRAINT "TableVoucher_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Voucher" (
     "id" SERIAL NOT NULL,
-    "isActive" BOOLEAN NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "personCount" INTEGER NOT NULL,
     "token" TEXT NOT NULL,
-    "totalBills" DECIMAL(65,30) NOT NULL,
+    "totalBills" DECIMAL(65,30) NOT NULL DEFAULT 0,
     "issueDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "tableId" INTEGER NOT NULL,
     "packageId" INTEGER NOT NULL,
     "createdBy" INTEGER NOT NULL,
 
@@ -77,14 +93,26 @@ CREATE TABLE "Voucher" (
 -- CreateTable
 CREATE TABLE "VoucherMenu" (
     "id" SERIAL NOT NULL,
+    "isDone" BOOLEAN NOT NULL DEFAULT false,
+    "quantity" INTEGER NOT NULL,
+    "menuPrice" INTEGER NOT NULL,
     "voucherId" INTEGER NOT NULL,
     "menuId" INTEGER NOT NULL,
 
     CONSTRAINT "VoucherMenu_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateIndex
+CREATE UNIQUE INDEX "Table_tableNo_key" ON "Table"("tableNo");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Voucher_token_key" ON "Voucher"("token");
+
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "UserRole"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Menu" ADD CONSTRAINT "Menu_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "PackageMenu" ADD CONSTRAINT "PackageMenu_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "Package"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -93,7 +121,10 @@ ALTER TABLE "PackageMenu" ADD CONSTRAINT "PackageMenu_packageId_fkey" FOREIGN KE
 ALTER TABLE "PackageMenu" ADD CONSTRAINT "PackageMenu_menuId_fkey" FOREIGN KEY ("menuId") REFERENCES "Menu"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Voucher" ADD CONSTRAINT "Voucher_tableId_fkey" FOREIGN KEY ("tableId") REFERENCES "Table"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "TableVoucher" ADD CONSTRAINT "TableVoucher_tableId_fkey" FOREIGN KEY ("tableId") REFERENCES "Table"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TableVoucher" ADD CONSTRAINT "TableVoucher_voucherId_fkey" FOREIGN KEY ("voucherId") REFERENCES "Voucher"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Voucher" ADD CONSTRAINT "Voucher_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "Package"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
