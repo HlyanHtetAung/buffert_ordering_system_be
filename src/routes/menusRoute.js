@@ -166,23 +166,28 @@ const adminRoutes = () => {
   });
 
   // *** get all menus ***
-  router.get("/", async (req, res) => {
-    const { categoryId } = req.query;
+router.get("/", async (req, res) => {
+  const { categoryId } = req.query;
 
-    try {
-      const allMenus = await prisma.menu.findMany({
-        where: categoryId ? { categoryId: parseInt(categoryId) } : {},
-      });
-      res.status(200).json({
-        message: "All Menus fetched successfully!",
-        data: allMenus,
-      });
-    } catch (error) {
-      res
-        .status(500)
-        .json({ error: "Error fetching menus", details: error.message });
-    }
-  });
+  try {
+    const allMenus = await prisma.menu.findMany({
+      where: categoryId ? { categoryId: parseInt(categoryId) } : {},
+      include: {
+        category: true,
+      },
+    });
+
+    res.status(200).json({
+      message: "All Menus fetched successfully!",
+      data: allMenus,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Error fetching menus",
+      details: error.message,
+    });
+  }
+});
 
   // *** delete menu ***
   router.delete("/delete/:id", async (req, res) => {
